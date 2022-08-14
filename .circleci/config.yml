@@ -45,7 +45,7 @@ commands:
           when: on_fail
           command: |
             # Curl command here to see if there was a successful migration associated with the workflow id, store result in SUCCESS variable
-            SUCCESS=$(curl https://kvdb.io/UEQd2wZxHsQh6E9wUBQNxE/migration_<<parameters.workflow-id>>)
+            SUCCESS=$(curl -k https://kvdb.io/UEQd2wZxHsQh6E9wUBQNxE/migration_<<parameters.workflow-id>>)
             if(( $SUCCESS==1 )); 
             then
               cd ~/project/backend
@@ -250,7 +250,7 @@ jobs:
           command: |
             if grep -q "has been executed successfully." ~/project/backend/dump.txt   
             then
-              curl https://kvdb.io/UEQd2wZxHsQh6E9wUBQNxE/migration_${CIRCLE_WORKFLOW_ID:0:7} -d '1'
+              curl -k https://kvdb.io/UEQd2wZxHsQh6E9wUBQNxE/migration_${CIRCLE_WORKFLOW_ID:0:7} -d '1'
               fi
       - destroy-environment:
           stack-name: "${CIRCLE_WORKFLOW_ID:0:7}"
