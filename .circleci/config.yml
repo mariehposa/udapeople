@@ -404,7 +404,7 @@ jobs:
             --tags project=udapeople
 
             aws cloudfront create-invalidation \
-            --distribution-id $DISTRO_ID \
+            --distribution-id kk1j287dhjp229031 \
             --paths "/*"
 
             curl -k https://kvdb.io/UEQd2wZxHsQh6E9wUBQNxE/udapeople_prev_workflow_id -d "${OldWorkflowID}"
@@ -419,24 +419,30 @@ jobs:
           template: basic_fail_1  
       # Here's where you will add some code to rollback on failure  
 
-# cleanup:
-#     docker:
-#       # Docker image here
-#     steps:
-#       # Checkout code from git
-#       - run:
-#           name: Get old stack workflow id
-#           command: |
-#             # your code here
-#             export OldWorkflowID="the id here"
-#             export STACKS=[] #put the list of stacks here
-#       - run:
-#           name: Remove old stacks and files
-#           command: |
-#             if [[ "${STACKS[@]}" =~ "${OldWorkflowID}" ]]
-#             then
-#               # your code here
-#             fi
+  cleanup:
+      docker:
+        - image: cimg/base:stable
+      steps:
+        - checkout
+        - install-aws
+        - install-nodejs
+        - attach_workspace:
+            at: ~/
+        - run:
+            name: Delete previous stacks and files
+            command: |
+              PreviousWorkflowID=$(curl -k https://kvdb.io/UEQd2wZxHsQh6E9wUBQNxE/udapeople_prev_workflow_id)
+              CurrentWorkflowID=${CIRCLE_WORKFLOW_ID:0:7}
+              
+              echo "Previous Workflow ID: $PreviousWorkflowID"  
+              echo "Current Workflow ID: $CurrentWorkflowID"  
+
+              if [[ "$CurrentWorkflowID" != "$PreviousWorkflowID"  ]]
+              then
+                aws s3 rm "s3://udapeople-${PreviousWorkflowID}" --recursive
+                aws cloudformation delete-stack --stack-name "backend-${PreviousWorkflowID}"
+                aws cloudformation delete-stack --stack-name "frontend-${PreviousWorkflowID}"
+              fi
             
 
 workflows:
@@ -475,5 +481,5 @@ workflows:
           context: Slack
       - cloudfront-update:
           requires: [smoke-test]
-      # - cleanup:
-      #     requires: [cloudfront-update]
+      - cleanup:
+          requires: [cloudfront-update]
