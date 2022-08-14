@@ -451,6 +451,7 @@ workflows:
           context: Slack
       - smoke-test:
           requires: [deploy-frontend]
+          context: Slack
       # - cloudfront-update:
       #     requires: [smoke-test]
       # - cleanup:
