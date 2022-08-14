@@ -23,24 +23,34 @@ commands:
             aws cloudformation delete-stack --stack-name frontend-<<parameters.stack-name>>
             aws cloudformation delete-stack --stack-name backend-<<parameters.stack-name>>
   
+  install-aws:
+    description: Install AWS CLI v2
+    steps:
+      - run:
+          name: Install AWS CLI v2
+          command: |
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
 
   revert-migrations:
     description: Revert the last migration if successfully run in the current workflow.
-    # parameters:
-      # Add parameter here     
+    parameters:
+      workflow-id:
+        type: string
+        default: ${CIRCLE_workflow-id:0:7}      
     steps:
       - run:
           name: Revert migrations
-          # Add when this will run
+          when: on_fail
           command: |
             # Curl command here to see if there was a successful migration associated with the workflow id, store result in SUCCESS variable
-            SUCCESS = 1
+            SUCCESS=$(curl https://kvdb.io/UEQd2wZxHsQh6E9wUBQNxE/migration_<<parameters.workflow-id>>)
             if(( $SUCCESS==1 )); 
             then
-            #  cd ~/project/backend
-            #  npm install
-            #  Add revert code here. You can find this in the Getting Started section.
-              exit 1
+              cd ~/project/backend
+              npm install
+              npm run migrations:revert
             fi
             
 jobs:
@@ -211,31 +221,45 @@ jobs:
           name: "Run Playbook and configure server"
           command: ansible-playbook -i ~/project/.circleci/ansible/inventory.txt .circleci/ansible/configure-server.yml
       - destroy-environment:
-          stack-name: "frontend-${CIRCLE_WORKFLOW_ID:0:7}"
-      - destroy-environment:
-          stack-name: "backend-${CIRCLE_WORKFLOW_ID:0:7}"      
+          stack-name: "${CIRCLE_WORKFLOW_ID:0:7}"
       - slack/notify:
           channel: devops
           event: fail
           template: basic_fail_1  
       
 
-#   run-migrations:
-#     docker:
-#       # Docker image here that supports NodeJS
-#     steps:
-#       # Checkout code from git
-#       - run:
-#           name: Run migrations
-#           command: |
-#             # Your code here
-#             exit 1
-#       - run:
-#           name: Send migration results to memstash
-#           command: |
-#             # Your code here
-#             exit 1
-#      # Here's where you will add some code to rollback on failure      
+  run-migrations:
+    <<: *nodeImage
+    steps:
+      - checkout
+      - install-aws
+      - attach_workspace:
+          at: ~/
+      - restore_cache:
+          keys:
+            - "backend-build"
+      - run:
+          name: Run migrations
+          command: |
+            cd backend 
+            npm install
+            npm run migrations > dump.txt
+            cat dump.txt
+      - run:
+          name: Send migration results to kvdb
+          command: |
+            if grep -q "has been executed successfully." ~/project/backend/dump.txt   
+            then
+              curl https://kvdb.io/UEQd2wZxHsQh6E9wUBQNxE/migration_${CIRCLE_WORKFLOW_ID:0:7} -d '1'
+              fi
+      - destroy-environment:
+          stack-name: "${CIRCLE_WORKFLOW_ID:0:7}"
+      - revert-migrations    
+      - slack/notify:
+          channel: devops
+          event: fail
+          template: basic_fail_1  
+     # Here's where you will add some code to rollback on failure      
 
 #   deploy-frontend:
 #     docker:
