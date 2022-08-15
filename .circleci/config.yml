@@ -420,12 +420,10 @@ jobs:
       # Here's where you will add some code to rollback on failure  
 
   cleanup:
-      docker:
-        - image: cimg/base:stable
+      <<: *nodeImage
       steps:
         - checkout
         - install-aws
-        - install-nodejs
         - attach_workspace:
             at: ~/
         - run:
