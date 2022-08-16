@@ -384,10 +384,16 @@ jobs:
       # Here's where you will add some code to rollback on failure  
 
   cloudfront-update:
-    <<: *nodeImage
+    docker:
+      - image: cimg/base:stable
     steps:
       - checkout
       - install-aws
+      - run:
+          name: Install Node.js 13
+          command: |
+            curl -fsSL https://deb.nodesource.com/setup_13.x | sudo -E bash -
+            sudo apt install -y nodejs
       - attach_workspace:
           at: ~/ 
       - run:
