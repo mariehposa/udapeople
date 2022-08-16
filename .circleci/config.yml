@@ -404,7 +404,7 @@ jobs:
             --tags project=udapeople
 
             aws cloudfront create-invalidation \
-            --distribution-id ${DISTRO_ID} \
+            --distribution-id $DISTRO_ID \
             --paths "/*"
 
             curl -k https://kvdb.io/UEQd2wZxHsQh6E9wUBQNxE/udapeople_prev_workflow_id -d "${OldWorkflowID}"
